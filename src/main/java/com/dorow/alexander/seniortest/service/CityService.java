@@ -2,7 +2,10 @@ package com.dorow.alexander.seniortest.service;
 
 import com.dorow.alexander.seniortest.dto.UF;
 import com.dorow.alexander.seniortest.model.City;
+import com.dorow.alexander.seniortest.util.GrahamScan;
+import com.dorow.alexander.seniortest.util.Point2D;
 import org.bson.Document;
+import org.omg.PortableInterceptor.DISCARDING;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -21,6 +24,7 @@ import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class CityService {
@@ -99,7 +103,33 @@ public class CityService {
         return new ResponseEntity<>(mongoTemplate.count(new Query(), City.class), HttpStatus.OK);
     }
 
-    public ResponseEntity<Long> getTheMostDistantCities() {
-        throw new NotImplementedException();
+    public ResponseEntity<List<City>> getTheMostDistantCities() {
+        List<Point2D> points = mongoTemplate.findAll(City.class).parallelStream().map(city -> new Point2D(city.getLon(), city.getLat(), city.getIbgeId())).collect(Collectors.toList());
+        double distance = 0;
+        Point2D firstPoint = null;
+        Point2D lastPoint = null;
+        for (Point2D externalPoint : new GrahamScan(points.toArray(new Point2D[0])).hull()) {
+            for (Point2D cityPoint : points) {
+                Double newDistance = distanceByLatLng(externalPoint.y(), externalPoint.x(), cityPoint.y(), cityPoint.x());
+                if (newDistance > distance) {
+                    distance = newDistance;
+                    firstPoint = externalPoint;
+                    lastPoint = cityPoint;
+                }
+            }
+        }
+        Criteria criteria = new Criteria().orOperator(Criteria.where("ibge_id").is(firstPoint.ibge_id()), Criteria.where("ibge_id").is(lastPoint.ibge_id()));
+        return new ResponseEntity<>(mongoTemplate.find(new Query(criteria), City.class), HttpStatus.OK);
     }
+
+
+    private Double distanceByLatLng(Double lat1, Double lng1, Double lat2, Double lng2) {
+        double earthRadius = 6371000; // meters
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLng = Math.toRadians(lng2 - lng1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return (earthRadius * c);
+    }
+
 }

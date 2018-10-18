@@ -20,8 +20,6 @@ import java.util.List;
 @Api(value = "CityAPI", description = "List of city endpoints", tags = {"City"})
 public class CityController {
 
-    //12. Dentre todas as cidades, obter as duas cidades mais distantes uma da outra com base
-//    na localização (distância em KM em linha reta);
     @Autowired
     private IntegrationService integrationService;
 
@@ -120,7 +118,7 @@ public class CityController {
 
     @ApiOperation(
             value = "11º - Get cities count",
-            response = City[].class
+            response = Long[].class
     )
     @RequestMapping(value = "/count", method = RequestMethod.GET)
     public ResponseEntity<Long> getCount() {
@@ -132,7 +130,7 @@ public class CityController {
             response = City[].class
     )
     @RequestMapping(value = "/most-distant", method = RequestMethod.GET)
-    public ResponseEntity<Long> getTheMostDistantCities() {
+    public ResponseEntity<List<City>> getTheMostDistantCities() {
         return cityService.getTheMostDistantCities();
     }
 
